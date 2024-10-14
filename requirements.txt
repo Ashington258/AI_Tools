@@ -1,0 +1,5 @@
+#run pip install -r requirements.txt
+PyQt5>=5.15.4
+opencv-python
+numpy
+pandas
