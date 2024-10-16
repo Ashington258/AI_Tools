@@ -1,9 +1,9 @@
 # Project
-
 dataset
 
-# dataset tool
 
+
+# dataset tool
 *.json
 *.jpg
 
@@ -15,6 +15,10 @@ dataset/
 # 忽略runs目录
 runs
 runs/
-
 # 忽略下载的模型文件
 *.pt
+
+
+# 获取数据工具
+*.mp4
+*.avi
