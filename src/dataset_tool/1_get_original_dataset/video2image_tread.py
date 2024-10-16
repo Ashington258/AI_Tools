@@ -42,5 +42,5 @@ def extract_frames(video_path, output_folder, num_threads=4):
 
 # 输入视频文件路径和输出文件夹
 video_path = "3.mp4"
-output_folder = "output_images"
+output_folder = "video2image"
 extract_frames(video_path, output_folder, num_threads=10)

@@ -14,7 +14,7 @@ import os
 import time
 
 # 创建保存图像的目录
-save_dir = "dataset"
+save_dir = "capture_image"
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
