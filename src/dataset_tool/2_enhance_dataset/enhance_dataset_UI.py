@@ -83,7 +83,6 @@ class AugmentationApp(QWidget):
                 lambda value, label=slider_value_label: label.setText(f"值: {value}")
             )
 
-        # 添加噪声强度滑动条
         self.preview_layout.addWidget(QLabel("噪声强度:"))
         noise_slider = QSlider(Qt.Horizontal)
         noise_slider.setMinimum(0)
@@ -164,14 +163,10 @@ class AugmentationApp(QWidget):
     def augment_image(self, image, operations):
         if operations.get("scale"):
             scale_factor = self.sliders["scale"].value() / 100.0
-            scale_variation = random.uniform(-0.1, 0.1)
-            scale_factor += scale_variation
             image = cv2.resize(image, None, fx=scale_factor, fy=scale_factor)
 
         if operations.get("rotate"):
             angle = self.sliders["rotate"].value()
-            angle_variation = random.randint(-10, 10)
-            angle += angle_variation
             h, w = image.shape[:2]
             center = (w // 2, h // 2)
             M = cv2.getRotationMatrix2D(center, angle, 1.0)
@@ -182,25 +177,16 @@ class AugmentationApp(QWidget):
 
         if operations.get("brightness"):
             brightness_change = self.sliders["brightness"].value() - 50
-            brightness_variation = random.randint(-20, 20)
-            brightness_change += brightness_variation
             image = cv2.convertScaleAbs(image, alpha=1, beta=brightness_change)
 
         if operations.get("translate"):
             tx = self.sliders["translate"].value() - 50
             ty = self.sliders["translate"].value() - 50
-            tx_variation = random.randint(-10, 10)
-            ty_variation = random.randint(-10, 10)
-            tx += tx_variation
-            ty += ty_variation
             M = np.float32([[1, 0, tx], [0, 1, ty]])
             image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
 
         if operations.get("noise"):
             noise_strength = max(self.sliders["noise"].value() / 100.0, 0)
-            noise_variation = random.uniform(-0.05, 0.05)
-            noise_strength += noise_variation
-            noise_strength = max(noise_strength, 0)
             noise = np.random.normal(0, 25 * noise_strength, image.shape).astype(
                 np.uint8
             )
