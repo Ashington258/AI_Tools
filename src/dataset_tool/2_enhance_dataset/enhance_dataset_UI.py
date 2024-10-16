@@ -14,14 +14,16 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QGraphicsScene,
     QGraphicsView,
+    QSlider,
 )
-
 from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import Qt
 
 
 class AugmentationApp(QWidget):
     def __init__(self):
         super().__init__()
+        self.sliders = {}  # 初始化滑动条字典
         self.initUI()
         self.original_image = None  # 保存原图
         self.current_image_path = None  # 当前预览图像路径
@@ -43,7 +45,8 @@ class AugmentationApp(QWidget):
         self.output_button.clicked.connect(self.select_output_dir)
         layout.addWidget(self.output_button)
 
-        # 批量增强选项
+        # 横向排列的操作选项
+        self.operations_layout = QHBoxLayout()
         self.operations = {
             "scale": QCheckBox("缩放"),
             "rotate": QCheckBox("旋转"),
@@ -53,10 +56,16 @@ class AugmentationApp(QWidget):
             "noise": QCheckBox("噪声添加"),
         }
         for op, checkbox in self.operations.items():
-            layout.addWidget(checkbox)
+            self.operations_layout.addWidget(checkbox)
+
+        layout.addLayout(self.operations_layout)
+
+        # 预览选项说明
+        self.preview_label = QLabel("预览选项:")
+        layout.addWidget(self.preview_label)
 
         # 预览功能部分
-        self.preview_layout = QHBoxLayout()
+        self.preview_layout = QVBoxLayout()
         self.preview_options = {}
 
         for op in self.operations.keys():
@@ -65,17 +74,50 @@ class AugmentationApp(QWidget):
             self.preview_options[op] = checkbox
             self.preview_layout.addWidget(checkbox)
 
+            # 添加滑动条
+            slider = QSlider(Qt.Horizontal)
+            slider.setMinimum(0)
+            slider.setMaximum(100)
+            slider.setValue(50)  # 初始值
+            self.preview_layout.addWidget(QLabel(f"{op} 参数:"))
+            self.preview_layout.addWidget(slider)
+            self.sliders[op] = slider
+
+            # 添加滑动条值显示标签
+            slider_value_label = QLabel("值: 50")
+            self.preview_layout.addWidget(slider_value_label)
+            slider.valueChanged.connect(
+                lambda value, label=slider_value_label: label.setText(f"值: {value}")
+            )
+
+        # 添加噪声强度滑动条
+        self.preview_layout.addWidget(QLabel("噪声强度:"))
+        noise_slider = QSlider(Qt.Horizontal)
+        noise_slider.setMinimum(0)
+        noise_slider.setMaximum(100)
+        noise_slider.setValue(50)  # 初始值
+        self.preview_layout.addWidget(noise_slider)
+        self.sliders["noise"] = noise_slider
+
+        # 添加噪声强度显示标签
+        noise_value_label = QLabel("值: 50")
+        self.preview_layout.addWidget(noise_value_label)
+        noise_slider.valueChanged.connect(
+            lambda value: noise_value_label.setText(f"值: {value}")
+        )
+
         self.preview_button = QPushButton("预览增强效果")
         self.preview_button.clicked.connect(self.select_random_image)
-        layout.addLayout(self.preview_layout)
-        layout.addWidget(self.preview_button)
+        self.preview_layout.addWidget(self.preview_button)
 
-        self.preview_label = QLabel("预览:")
-        layout.addWidget(self.preview_label)
+        self.preview_label_result = QLabel("预览:")
+        self.preview_layout.addWidget(self.preview_label_result)
 
         self.scene = QGraphicsScene()
         self.view = QGraphicsView(self.scene)
-        layout.addWidget(self.view)
+        self.preview_layout.addWidget(self.view)
+
+        layout.addLayout(self.preview_layout)
 
         self.enhance_button = QPushButton("开始增强")
         self.enhance_button.clicked.connect(self.enhance_images)
@@ -95,11 +137,11 @@ class AugmentationApp(QWidget):
 
     def augment_image(self, image, operations):
         if operations.get("scale"):
-            scale_factor = random.uniform(0.5, 1.5)
+            scale_factor = self.sliders["scale"].value() / 100.0
             image = cv2.resize(image, None, fx=scale_factor, fy=scale_factor)
 
         if operations.get("rotate"):
-            angle = random.randint(0, 360)
+            angle = self.sliders["rotate"].value()
             h, w = image.shape[:2]
             center = (w // 2, h // 2)
             M = cv2.getRotationMatrix2D(center, angle, 1.0)
@@ -109,17 +151,20 @@ class AugmentationApp(QWidget):
             image = cv2.flip(image, 1)
 
         if operations.get("brightness"):
-            brightness_change = random.randint(-50, 50)
+            brightness_change = self.sliders["brightness"].value() - 50
             image = cv2.convertScaleAbs(image, alpha=1, beta=brightness_change)
 
         if operations.get("translate"):
-            tx = random.randint(-30, 30)
-            ty = random.randint(-30, 30)
+            tx = self.sliders["translate"].value() - 50
+            ty = self.sliders["translate"].value() - 50
             M = np.float32([[1, 0, tx], [0, 1, ty]])
             image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
 
         if operations.get("noise"):
-            noise = np.random.normal(0, 25, image.shape).astype(np.uint8)
+            noise_strength = self.sliders["noise"].value() / 100.0  # 获取噪声强度
+            noise = np.random.normal(0, 25 * noise_strength, image.shape).astype(
+                np.uint8
+            )
             image = cv2.add(image, noise)
 
         return image
@@ -163,6 +208,7 @@ class AugmentationApp(QWidget):
                 self.original_image.copy(), preview_operations
             )
 
+            # 处理并显示预览图像
             height, width, channel = augmented_image.shape
             bytes_per_line = 3 * width
             qt_image = QImage(
