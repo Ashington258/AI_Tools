@@ -12,7 +12,11 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QCheckBox,
     QHBoxLayout,
+    QComboBox,
+    QGraphicsScene,
+    QGraphicsView,
 )
+from PyQt5.QtGui import QImage, QPixmap
 
 
 class AugmentationApp(QWidget):
@@ -21,6 +25,9 @@ class AugmentationApp(QWidget):
         self.initUI()
 
     def initUI(self):
+        # 设置黑色主题
+        self.setStyleSheet("background-color: #2d2d2d; color: white;")
+
         layout = QVBoxLayout()
 
         self.input_dir = ""
@@ -44,6 +51,17 @@ class AugmentationApp(QWidget):
         }
         for op, checkbox in self.operations.items():
             layout.addWidget(checkbox)
+
+        self.preview_button = QPushButton("预览增强效果")
+        self.preview_button.clicked.connect(self.preview_image)
+        layout.addWidget(self.preview_button)
+
+        self.preview_label = QLabel("预览:")
+        layout.addWidget(self.preview_label)
+
+        self.scene = QGraphicsScene()
+        self.view = QGraphicsView(self.scene)
+        layout.addWidget(self.view)
 
         self.enhance_button = QPushButton("开始增强")
         self.enhance_button.clicked.connect(self.enhance_images)
@@ -97,7 +115,6 @@ class AugmentationApp(QWidget):
                 )
 
         if operations.get("noise", False):
-            # 添加椒盐噪声
             noisy_image_sp = image.copy()
             num_salt = np.ceil(0.02 * image.size * 0.5)
             coords = [np.random.randint(0, i - 1, int(num_salt)) for i in image.shape]
@@ -108,7 +125,6 @@ class AugmentationApp(QWidget):
             noisy_image_sp[coords[0], coords[1], :] = 0
             augmented_images.append(noisy_image_sp)
 
-            # 添加高斯噪声
             gauss = np.random.normal(0, 1, image.shape).astype("uint8")
             augmented_images.append(cv2.add(image, gauss))
 
@@ -137,6 +153,32 @@ class AugmentationApp(QWidget):
             op: checkbox.isChecked() for op, checkbox in self.operations.items()
         }
         self.enhance_dataset(self.input_dir, self.output_dir, operations)
+
+    def preview_image(self):
+        if self.input_dir:
+            random_image_path = os.path.join(
+                self.input_dir, random.choice(os.listdir(self.input_dir))
+            )
+            image = cv2.imread(random_image_path)
+            operations = {
+                op: checkbox.isChecked() for op, checkbox in self.operations.items()
+            }
+            augmented_images = self.augment_image(image, operations)
+
+            if augmented_images:
+                preview_image = augmented_images[0]  # 预览第一个增强图像
+                height, width, channel = preview_image.shape
+                bytes_per_line = 3 * width
+                qt_image = QImage(
+                    preview_image.data,
+                    width,
+                    height,
+                    bytes_per_line,
+                    QImage.Format_RGB888,
+                ).rgbSwapped()
+                self.scene.clear()
+                self.scene.addPixmap(QPixmap.fromImage(qt_image))
+                self.view.setScene(self.scene)
 
 
 if __name__ == "__main__":
