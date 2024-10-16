@@ -26,5 +26,5 @@ def extract_frames(video_path, output_folder):
 
 # 输入视频文件路径和输出文件夹
 video_path = "1.mp4"
-output_folder = "video2image"
+output_folder = "2_video2image"
 extract_frames(video_path, output_folder)

@@ -61,7 +61,7 @@ def capture_video(
 # Example usage
 if __name__ == "__main__":
     capture_video(
-        camera_index=0, width=1280, height=720, fps=30, output_file="output.mp4"
+        camera_index=0, width=1280, height=720, fps=30, output_file="1_output.mp4"
     )
 
     # Uncomment for AVI format
