@@ -20,9 +20,11 @@ def monte_carlo_image_sampling(image_folder, sample_ratio, output_folder):
     # 创建输出文件夹（如果不存在）
     os.makedirs(output_folder, exist_ok=True)
 
-    # 复制抽样的图像到输出文件夹
-    for image in sampled_images:
+    # 复制抽样的图像到输出文件夹，并显示进度
+    for i, image in enumerate(sampled_images):
         shutil.copy(os.path.join(image_folder, image), output_folder)
+        # 显示进度
+        print(f"复制中: {i + 1}/{sample_size} ({((i + 1) / sample_size) * 100:.2f}%)")
 
     print(f"抽样完成，已复制 {sample_size} 张图像到 {output_folder}")
 
