@@ -46,8 +46,16 @@ def split_dataset(
     ]:
         mkdir(path)
 
-    # 获取所有标签文件
+    # 获取所有标签文件，仅选择以 .txt 结尾的文件
     total_txt = [f for f in os.listdir(txt_dir) if f.endswith(".txt")]
+
+    # 检查是否没有有效的标签文件
+    if not total_txt:
+        QtWidgets.QMessageBox.critical(
+            None, "错误", "标签文件夹中没有有效的标签文件（.txt）"
+        )
+        return
+
     num_txt = len(total_txt)
 
     # 根据比例计算数量
