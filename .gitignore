@@ -1,0 +1,16 @@
+# dataset tool
+
+*.json
+*.jpg
+
+
+# training tool
+# 忽略dataset子目录
+dataset/*
+dataset/
+# 忽略runs目录
+runs
+runs/
+
+# 忽略下载的模型文件
+*.pt
