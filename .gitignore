@@ -6,6 +6,7 @@ dataset
 # dataset tool
 *.json
 *.jpg
+*.png
 
 
 # training tool
