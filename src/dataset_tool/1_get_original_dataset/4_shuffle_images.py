@@ -28,6 +28,6 @@ def shuffle_and_rename_images(image_folder, output_folder):
 
 # 示例用法
 image_folder = "shuffled_images"  # 输入文件夹路径
-output_folder = "4_shuffled_images"  # 输出文件夹路径
+output_folder = "output_file/4_shuffled_images"  # 输出文件夹路径
 
 shuffle_and_rename_images(image_folder, output_folder)

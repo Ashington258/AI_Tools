@@ -30,8 +30,8 @@ def monte_carlo_image_sampling(image_folder, sample_ratio, output_folder):
 
 
 # 示例用法
-image_folder = "dataset/new"
-output_folder = "3_monte_carlo_sampling"
+image_folder = "2_video2image"
+output_folder = "output_file/3_monte_carlo_sampling"
 sample_ratio = 0.1  # 10%
 
 monte_carlo_image_sampling(image_folder, sample_ratio, output_folder)
