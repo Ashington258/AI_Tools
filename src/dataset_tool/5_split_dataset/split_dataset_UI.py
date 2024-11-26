@@ -1,7 +1,8 @@
 import os
 import shutil
 import random
-from PyQt5 import QtWidgets, QtGui, QtCore
+import yaml
+from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import (
     QFileDialog,
     QVBoxLayout,
@@ -17,6 +18,47 @@ from PyQt5.QtWidgets import (
 def mkdir(path):
     if not os.path.exists(path):
         os.makedirs(path)
+
+
+# 生成 YAML 文件
+def generate_yaml(txt_file, save_dir):
+    # 使用 os.path.normpath 确保路径为系统标准格式
+    normalized_save_dir = os.path.normpath(save_dir)
+
+    yaml_file = os.path.join(normalized_save_dir, "dataset.yaml")
+    try:
+        with open(
+            txt_file, "r", encoding="utf-8"
+        ) as file:  # 读取类别文件，使用 utf-8 编码
+            categories = [line.strip() for line in file if line.strip()]
+    except Exception as e:
+        QtWidgets.QMessageBox.critical(None, "错误", f"读取类别文件失败: {e}")
+        return
+
+    # 构建 YAML 数据
+    yaml_data = {
+        "path": normalized_save_dir,  # 确保路径格式正确
+        "train": "images/train",
+        "val": "images/val",
+        "test": "images/test",
+        "names": {i: category for i, category in enumerate(categories)},
+    }
+
+    try:
+        with open(yaml_file, "w", encoding="utf-8") as file:
+            # 将数据写入 YAML 文件，避免转义
+            yaml.dump(
+                yaml_data,
+                file,
+                default_flow_style=False,
+                sort_keys=False,
+                allow_unicode=True,
+            )
+    except Exception as e:
+        QtWidgets.QMessageBox.critical(None, "错误", f"生成 YAML 文件失败: {e}")
+        return
+
+    QtWidgets.QMessageBox.information(None, "完成", "YAML 文件生成成功！")
 
 
 def split_dataset(
@@ -46,6 +88,9 @@ def split_dataset(
     ]:
         mkdir(path)
 
+    # 支持的图像格式
+    image_extensions = [".png", ".jpg", ".jpeg"]
+
     # 获取所有标签文件，仅选择以 .txt 结尾的文件
     total_txt = [f for f in os.listdir(txt_dir) if f.endswith(".txt")]
 
@@ -73,39 +118,34 @@ def split_dataset(
         f"训练集数量: {len(train_files)}, 验证集数量: {len(val_files)}, 测试集数量: {len(test_files)}"
     )
 
-    # 复制文件到相应的目录，处理中文路径
-    for txt_file in train_files:
-        img_file = txt_file.replace(".txt", ".png")
-        shutil.copy(
-            os.path.abspath(os.path.join(image_dir, img_file)),
-            os.path.abspath(os.path.join(img_train_path, img_file)),
-        )
-        shutil.copy(
-            os.path.abspath(os.path.join(txt_dir, txt_file)),
-            os.path.abspath(os.path.join(label_train_path, txt_file)),
-        )
+    # 文件复制逻辑
+    def copy_files(txt_files, img_path, label_path):
+        for txt_file in txt_files:
+            # 生成标签文件的完整路径
+            txt_full_path = os.path.abspath(os.path.join(txt_dir, txt_file))
 
-    for txt_file in val_files:
-        img_file = txt_file.replace(".txt", ".png")
-        shutil.copy(
-            os.path.abspath(os.path.join(image_dir, img_file)),
-            os.path.abspath(os.path.join(img_val_path, img_file)),
-        )
-        shutil.copy(
-            os.path.abspath(os.path.join(txt_dir, txt_file)),
-            os.path.abspath(os.path.join(label_val_path, txt_file)),
-        )
+            # 根据标签文件查找对应的图像文件
+            img_file = None
+            for ext in image_extensions:
+                potential_img_file = os.path.join(
+                    image_dir, txt_file.replace(".txt", ext)
+                )
+                if os.path.exists(potential_img_file):
+                    img_file = potential_img_file
+                    break
 
-    for txt_file in test_files:
-        img_file = txt_file.replace(".txt", ".png")
-        shutil.copy(
-            os.path.abspath(os.path.join(image_dir, img_file)),
-            os.path.abspath(os.path.join(img_test_path, img_file)),
-        )
-        shutil.copy(
-            os.path.abspath(os.path.join(txt_dir, txt_file)),
-            os.path.abspath(os.path.join(label_test_path, txt_file)),
-        )
+            if img_file is None:
+                print(f"未找到对应的图像文件: {txt_file}")
+                continue
+
+            # 复制文件
+            shutil.copy(img_file, os.path.join(img_path, os.path.basename(img_file)))
+            shutil.copy(txt_full_path, os.path.join(label_path, txt_file))
+
+    # 复制训练集、验证集和测试集文件
+    copy_files(train_files, img_train_path, label_train_path)
+    copy_files(val_files, img_val_path, label_val_path)
+    copy_files(test_files, img_test_path, label_test_path)
 
 
 class SplitDatasetApp(QWidget):
@@ -158,6 +198,12 @@ class SplitDatasetApp(QWidget):
         self.saveDirButton = QPushButton("浏览")
         self.saveDirButton.clicked.connect(self.browse_save_dir)
 
+        # Class file
+        self.classFileLabel = QLabel("选择类别文件:")
+        self.classFileInput = QLineEdit()
+        self.classFileButton = QPushButton("浏览")
+        self.classFileButton.clicked.connect(self.browse_class_file)
+
         # Train, Val, Test Percentages
         self.trainLabel = QLabel("训练集百分比:")
         self.trainInput = QLineEdit("0.7")
@@ -167,7 +213,7 @@ class SplitDatasetApp(QWidget):
         self.testInput = QLineEdit("0.15")
 
         # Start button
-        self.startButton = QPushButton("开始划分数据集")
+        self.startButton = QPushButton("开始划分数据集并生成 YAML")
         self.startButton.clicked.connect(self.start_splitting)
 
         # 将组件添加到布局中
@@ -183,6 +229,10 @@ class SplitDatasetApp(QWidget):
         layout.addWidget(self.saveDirInput)
         layout.addWidget(self.saveDirButton)
 
+        layout.addWidget(self.classFileLabel)
+        layout.addWidget(self.classFileInput)
+        layout.addWidget(self.classFileButton)
+
         layout.addWidget(self.trainLabel)
         layout.addWidget(self.trainInput)
 
@@ -195,8 +245,8 @@ class SplitDatasetApp(QWidget):
         layout.addWidget(self.startButton)
 
         self.setLayout(layout)
-        self.setWindowTitle("数据集划分工具 - GitHub 风格")
-        self.setGeometry(300, 300, 400, 300)
+        self.setWindowTitle("YOLO训练集数据集划分工具")
+        self.setGeometry(300, 300, 400, 350)
 
     def browse_image_dir(self):
         dir_ = QFileDialog.getExistingDirectory(self, "选择图片文件夹")
@@ -213,13 +263,25 @@ class SplitDatasetApp(QWidget):
         if dir_:
             self.saveDirInput.setText(dir_)
 
+    def browse_class_file(self):
+        file_, _ = QFileDialog.getOpenFileName(
+            self, "选择类别文件", "", "文本文件 (*.txt)"
+        )
+        if file_:
+            self.classFileInput.setText(file_)
+
     def start_splitting(self):
         image_dir = self.imageDirInput.text()
         txt_dir = self.txtDirInput.text()
         save_dir = self.saveDirInput.text()
+        class_file = self.classFileInput.text()
         train_percent = float(self.trainInput.text())
         val_percent = float(self.valInput.text())
         test_percent = float(self.testInput.text())
+
+        if not class_file:
+            QtWidgets.QMessageBox.critical(self, "错误", "请选择类别文件")
+            return
 
         if train_percent + val_percent + test_percent != 1.0:
             QtWidgets.QMessageBox.critical(
@@ -230,7 +292,10 @@ class SplitDatasetApp(QWidget):
         split_dataset(
             image_dir, txt_dir, save_dir, train_percent, val_percent, test_percent
         )
-        QtWidgets.QMessageBox.information(self, "完成", "数据集划分完成")
+        generate_yaml(class_file, save_dir)
+        QtWidgets.QMessageBox.information(
+            self, "完成", "数据集划分和 YAML 文件生成完成！"
+        )
 
 
 if __name__ == "__main__":
