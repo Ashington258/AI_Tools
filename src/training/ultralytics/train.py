@@ -39,13 +39,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset_root",
         type=str,
-        default="dataset/0-200/yolo",
+        default="yolo",
         help="数据集根目录",
     )
     parser.add_argument(
         "--yaml_file",
         type=str,
-        default=os.path.abspath("dataset/0-200/yolo/dataset.yaml"),
+        default=os.path.abspath("yolo/dataset.yaml"),
         help="YAML 配置文件路径",
     )
     parser.add_argument("--epochs", type=int, default=100, help="训练轮数")
