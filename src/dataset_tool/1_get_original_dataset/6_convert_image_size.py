@@ -1,5 +1,6 @@
 import os
 from PIL import Image
+from tqdm import tqdm  # 导入 tqdm 库
 
 
 def adjust_images_in_folder(input_folder, output_folder, new_size):
@@ -13,26 +14,27 @@ def adjust_images_in_folder(input_folder, output_folder, new_size):
     # 确保输出文件夹存在
     os.makedirs(output_folder, exist_ok=True)
 
-    # 遍历输入文件夹中的所有文件
-    for filename in os.listdir(input_folder):
-        if filename.lower().endswith(
-            (".png", ".jpg", ".jpeg", ".bmp", ".gif")
-        ):  # 支持的图像格式
-            input_path = os.path.join(input_folder, filename)
-            output_path = os.path.join(output_folder, filename)
+    # 获取所有支持的图像文件
+    image_files = [
+        f
+        for f in os.listdir(input_folder)
+        if f.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif"))
+    ]
 
-            # 打开图像并调整大小
-            with Image.open(input_path) as img:
-                resized_img = img.resize(new_size)
-                resized_img.save(output_path)
-                print(f"已调整并保存图像: {output_path}")
+    # 使用 tqdm 显示进度条
+    for filename in tqdm(image_files, desc="处理图像", unit="个"):
+        input_path = os.path.join(input_folder, filename)
+        output_path = os.path.join(output_folder, filename)
+
+        # 打开图像并调整大小
+        with Image.open(input_path) as img:
+            resized_img = img.resize(new_size)
+            resized_img.save(output_path)
 
 
 if __name__ == "__main__":
     # 输入图像文件夹路径
-    input_folder_path = (
-        "output_file/2024_11_26_22_06/dataset/all"  # 替换为你的输入文件夹路径
-    )
+    input_folder_path = "1_test"  # 替换为你的输入文件夹路径
 
     # 输出图像文件夹路径
     output_folder_path = "output_file/6_convert_image_size"  # 替换为你的输出文件夹路径
