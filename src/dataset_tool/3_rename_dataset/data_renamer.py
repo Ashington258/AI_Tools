@@ -11,6 +11,8 @@ Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
 
 import os
 import sys
+import shutil
+import tempfile
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -203,6 +205,9 @@ class RenameApp(QMainWindow):
             )
             return
 
+        # 创建临时文件夹
+        temp_dir = tempfile.mkdtemp()
+
         filelist = os.listdir(self.input_path)
         total_files = len(filelist)
         if total_files == 0:
@@ -217,10 +222,20 @@ class RenameApp(QMainWindow):
                 continue
 
             filetype = os.path.splitext(files)[1]
-            new_path = os.path.join(self.output_path, str(a) + filetype)
-            os.rename(old_path, new_path)
-            a += 1
+            new_path = os.path.join(temp_dir, str(a) + filetype)
+
+            # 使用 shutil.move() 而不是 os.rename()
+            shutil.move(old_path, new_path)  # 这里替换 os.rename() 为 shutil.move()
+            a += 1  # 自增编号
             self.progress_bar.setValue(int((i + 1) / total_files * 100))
+
+        # 将临时文件夹中的文件移动到目标文件夹
+        for file in os.listdir(temp_dir):
+            temp_file_path = os.path.join(temp_dir, file)
+            shutil.move(temp_file_path, self.output_path)
+
+        # 删除临时文件夹及其内容
+        shutil.rmtree(temp_dir)
 
         self.input_label.setText("Input Path: Not Selected")
         self.output_label.setText("Output Path: Not Selected")
