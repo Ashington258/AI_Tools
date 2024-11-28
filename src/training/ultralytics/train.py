@@ -19,7 +19,7 @@ def main(args):
         "yolo",
         "task=segment",
         "mode=train",
-        "model=yolo11s-seg.pt",  # 使用 YOLOv11 的分割模型
+        "model=yolo11s-seg.pt",
         f"data={args.yaml_file}",
         f"epochs={args.epochs}",
         f"imgsz={args.imgsz}",
@@ -28,10 +28,11 @@ def main(args):
     # 执行训练命令
     try:
         print("开始训练...")
-        subprocess.run(" ".join(command), shell=True, check=True)
+        subprocess.run(command, check=True)  # 直接传递命令列表
         print("训练完成！")
     except subprocess.CalledProcessError as e:
         print(f"训练过程中发生错误：{e}")
+        print(f"命令输出：{e.output}")  # 添加输出信息
 
 
 if __name__ == "__main__":
@@ -39,16 +40,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset_root",
         type=str,
-        default="output/all/yolo",
+        default="train/50/yolo",
         help="数据集根目录",
     )
     parser.add_argument(
         "--yaml_file",
         type=str,
-        default=os.path.abspath("output/all/yolo/dataset.yaml"),
+        default=os.path.abspath("train/50/yolo/dataset.yaml"),
         help="YAML 配置文件路径",
     )
-    parser.add_argument("--epochs", type=int, default=100, help="训练轮数")
+    parser.add_argument("--epochs", type=int, default=200, help="训练轮数")
     parser.add_argument("--imgsz", type=int, default=640, help="输入图像大小")
 
     args = parser.parse_args()
