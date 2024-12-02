@@ -4,3 +4,5 @@ opencv-python
 numpy
 pandas
 ultralytics
+onnx==1.14.0
+onnxslim==0.1.34
