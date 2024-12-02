@@ -40,16 +40,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset_root",
         type=str,
-        default="train/50/yolo",
+        default="train/1-500/yolo",
         help="数据集根目录",
     )
     parser.add_argument(
         "--yaml_file",
         type=str,
-        default=os.path.abspath("train/50/yolo/dataset.yaml"),
+        default=os.path.abspath("train/1-500/yolo/dataset.yaml"),
         help="YAML 配置文件路径",
     )
-    parser.add_argument("--epochs", type=int, default=200, help="训练轮数")
+    parser.add_argument("--epochs", type=int, default=250, help="训练轮数")
     parser.add_argument("--imgsz", type=int, default=640, help="输入图像大小")
 
     args = parser.parse_args()
