@@ -18,7 +18,7 @@ dataset/
 
 yolo task=segment mode=train model=yolov8s-seg.pt data=data.yaml epochs=100 imgsz=640
 yolo task=segment mode=train model=yolo11s-seg.pt data=dataset/dataset.yaml epochs=100 imgsz=640
-
+yolo task=detect mode=train model=yolo26n.pt data=dataset/data/dataset.yaml epochs=100 imgsz=640 device=0
 ## 2 Use train.py to train
 
 set your configuration in train.py

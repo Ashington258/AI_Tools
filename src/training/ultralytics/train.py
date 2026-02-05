@@ -19,7 +19,7 @@ def main(args):
         "yolo",
         "task=segment",
         "mode=train",
-        "model=yolo11s-seg.pt",
+        "model=yolo11s.pt",
         f"data={args.yaml_file}",
         f"epochs={args.epochs}",
         f"imgsz={args.imgsz}",
@@ -40,13 +40,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset_root",
         type=str,
-        default="train/1-500/yolo",
+        default="Obj Detection.v8-wotr-10000-images.yolov11",
         help="数据集根目录",
     )
     parser.add_argument(
         "--yaml_file",
         type=str,
-        default=os.path.abspath("train/1-500/yolo/dataset.yaml"),
+        default=os.path.abspath("Obj Detection.v8-wotr-10000-images.yolov11/data.yaml"),
         help="YAML 配置文件路径",
     )
     parser.add_argument("--epochs", type=int, default=250, help="训练轮数")
