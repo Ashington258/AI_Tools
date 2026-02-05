@@ -3,6 +3,8 @@ import os
 import cv2
 import numpy as np
 import random
+import shutil
+import math
 from PyQt5.QtWidgets import (
     QApplication,
     QWidget,
@@ -16,7 +18,9 @@ from PyQt5.QtWidgets import (
     QGraphicsView,
     QSlider,
     QProgressBar,
+    QSpinBox,
 )
+
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
 
@@ -31,6 +35,10 @@ class Worker(QObject):
         self.output_dir = output_dir
         self.operations = operations
         self.sliders = sliders
+        # new parameters (will be set after construction by caller)
+        self.preserve_originals = False
+        self.augment_per_image = 5
+        self.target_total = 0
 
     def augment_image(self, image):
         if self.operations.get("scale"):
@@ -76,6 +84,11 @@ class Worker(QObject):
             if f.lower().endswith((".png", ".jpg", ".jpeg"))
         ]
 
+        # current count in output folder (helps when resuming or preserving originals)
+        current_count = len(
+            [f for f in os.listdir(self.output_dir) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
+        )
+
         for i, filename in enumerate(input_files):
             file_path = os.path.join(self.input_dir, filename)
             image = cv2.imread(file_path)
@@ -84,12 +97,44 @@ class Worker(QObject):
                 print(f"Error reading image {file_path}")
                 continue
 
-            for j in range(5):
+            # copy original if requested
+            if self.preserve_originals:
+                dest = os.path.join(self.output_dir, filename)
+                base, ext = os.path.splitext(filename)
+                if not os.path.exists(dest):
+                    shutil.copy2(file_path, dest)
+                    current_count += 1
+                else:
+                    k = 1
+                    while os.path.exists(os.path.join(self.output_dir, f"{base}_orig{k}{ext}")):
+                        k += 1
+                    shutil.copy2(file_path, os.path.join(self.output_dir, f"{base}_orig{k}{ext}"))
+                    current_count += 1
+
+            # determine how many augmentations to generate for this file
+            if self.target_total and self.target_total > 0:
+                remaining_needed = max(0, self.target_total - current_count)
+                remaining_files = len(input_files) - i
+                if remaining_files > 0:
+                    per_this = max(0, math.ceil(remaining_needed / remaining_files))
+                else:
+                    per_this = 0
+                num_aug = per_this
+            else:
+                num_aug = max(0, int(self.augment_per_image))
+
+            for j in range(num_aug):
                 augmented_image = self.augment_image(image.copy())
-                output_path = os.path.join(self.output_dir, f"aug_{j}_{filename}")
+                out_name = f"aug_{i}_{j}_{filename}"
+                output_path = os.path.join(self.output_dir, out_name)
                 cv2.imwrite(output_path, augmented_image)
+                current_count += 1
 
             self.progress.emit(int((i + 1) / len(input_files) * 100))
+
+            # stop early if target reached
+            if self.target_total and current_count >= self.target_total:
+                break
 
         self.finished.emit()
 
@@ -185,6 +230,41 @@ class AugmentationApp(QWidget):
 
         layout.addLayout(self.preview_layout)
 
+        # 新增：保留原图与增强数量控制
+        controls_layout = QHBoxLayout()
+        self.preserve_checkbox = QCheckBox("保留原始图像")
+        self.preserve_checkbox.setChecked(True)
+        controls_layout.addWidget(self.preserve_checkbox)
+
+        controls_layout.addWidget(QLabel("每张增强次数:"))
+        self.augment_spin = QSpinBox()
+        self.augment_spin.setMinimum(0)
+        self.augment_spin.setMaximum(1000)
+        self.augment_spin.setValue(5)
+        controls_layout.addWidget(self.augment_spin)
+
+        controls_layout.addWidget(QLabel("目标输出总数(0表示按每张次数生成):"))
+        self.target_spin = QSpinBox()
+        self.target_spin.setMinimum(0)
+        self.target_spin.setMaximum(1000000)
+        self.target_spin.setValue(0)
+        controls_layout.addWidget(self.target_spin)
+
+        layout.addLayout(controls_layout)
+
+        # 连接控件变化以实时更新估算（只连接一次）
+        self.augment_spin.valueChanged.connect(self.update_estimate)
+        self.target_spin.valueChanged.connect(self.update_estimate)
+        self.preserve_checkbox.stateChanged.connect(self.update_estimate)
+
+        # 预估信息
+        self.info_layout = QHBoxLayout()
+        self.input_count_label = QLabel("输入文件: 0")
+        self.estimate_label = QLabel("预计输出: 0")
+        self.info_layout.addWidget(self.input_count_label)
+        self.info_layout.addWidget(self.estimate_label)
+        layout.addLayout(self.info_layout)
+
         self.enhance_button = QPushButton("开始增强")
         self.enhance_button.clicked.connect(self.start_enhancement)
         layout.addWidget(self.enhance_button)
@@ -199,6 +279,7 @@ class AugmentationApp(QWidget):
     def select_input_dir(self):
         self.input_dir = QFileDialog.getExistingDirectory(self, "选择输入文件夹")
         print(f"输入文件夹: {self.input_dir}")
+        self.update_estimate()
 
     def select_output_dir(self):
         self.output_dir = QFileDialog.getExistingDirectory(self, "选择输出文件夹")
@@ -294,6 +375,10 @@ class AugmentationApp(QWidget):
 
         self.thread = QThread()
         self.worker = Worker(self.input_dir, self.output_dir, operations, self.sliders)
+        # 传入新的参数
+        self.worker.preserve_originals = self.preserve_checkbox.isChecked()
+        self.worker.augment_per_image = self.augment_spin.value()
+        self.worker.target_total = self.target_spin.value()
         self.worker.moveToThread(self.thread)
 
         self.worker.finished.connect(self.thread.quit)
@@ -303,6 +388,24 @@ class AugmentationApp(QWidget):
         self.worker.progress.connect(self.progress_bar.setValue)
 
         self.thread.start()
+        # UI 禁用以防重复运行
+        self.enhance_button.setEnabled(False)
+        self.thread.finished.connect(lambda: self.enhance_button.setEnabled(True))
+
+    def update_estimate(self):
+        input_count = 0
+        if self.input_dir and os.path.exists(self.input_dir):
+            input_count = len([
+                f
+                for f in os.listdir(self.input_dir)
+                if f.lower().endswith((".png", ".jpg", ".jpeg"))
+            ])
+        self.input_count_label.setText(f"输入文件: {input_count}")
+        if self.target_spin.value() > 0:
+            est = self.target_spin.value()
+        else:
+            est = input_count * self.augment_spin.value() + (input_count if self.preserve_checkbox.isChecked() else 0)
+        self.estimate_label.setText(f"预计输出: {est}")
 
 
 if __name__ == "__main__":
